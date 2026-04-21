@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Meeting } from "@/types/meeting";
-import { downloadPpt, downloadText, emailMailto, postToSlack } from "@/lib/exports";
+import { downloadPpt, downloadPdf, sendEmailViaResend, postToSlack } from "@/lib/exports";
 
 type TabKey = "transcript" | "tasks" | "scope" | "agent";
 
@@ -135,16 +135,23 @@ export default function Dashboard() {
   };
 
   const handleDownload = () => { if (requireResult() && meeting) downloadText(meeting); };
+  const handlePdf = () => { if (requireResult() && meeting) downloadPdf(meeting); };
   const handlePpt = async () => {
     if (!requireResult() || !meeting) return;
     try { await downloadPpt(meeting); toast.success("PPT generated"); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Failed to generate PPT"); }
   };
-  const handleEmail = () => {
+  const handleEmail = async () => {
     if (!requireResult() || !meeting) return;
     const to = localStorage.getItem("chronos.integration.emailTo") ?? "";
     if (!to) { toast.error("Set a default email recipient in Settings"); return; }
-    window.location.href = emailMailto(meeting, to);
+    try {
+      toast.loading("Sending email…", { id: "email" });
+      await sendEmailViaResend(meeting, to);
+      toast.success(`Email sent to ${to}`, { id: "email" });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send email", { id: "email" });
+    }
   };
   const handleSlack = async () => {
     if (!requireResult() || !meeting) return;
@@ -206,7 +213,7 @@ export default function Dashboard() {
               { Icon: Mail, label: "Email", onClick: handleEmail },
               { Icon: Presentation, label: "PPT", onClick: handlePpt },
               { Icon: MessageSquare, label: "Slack", onClick: handleSlack },
-              { Icon: Download, label: "Download", onClick: handleDownload },
+              { Icon: Download, label: "PDF", onClick: handlePdf },
             ].map(({ Icon, label, onClick }) => (
               <button key={label} onClick={onClick} disabled={!hasResult}
                 className="liquid-glass rounded-xl p-3 flex flex-col items-center gap-1.5 hover:bg-white/[0.04] transition disabled:opacity-40">
