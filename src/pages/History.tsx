@@ -211,3 +211,5 @@ function NavBar({
     </nav>
   );
 }
+
+export default HistoryPage;

@@ -267,3 +267,5 @@ function NavBar({
     </nav>
   );
 }
+
+export default SettingsPage;

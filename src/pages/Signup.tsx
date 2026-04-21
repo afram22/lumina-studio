@@ -90,3 +90,5 @@ function SignupPage() {
     </AuthShell>
   );
 }
+
+export default SignupPage;
