@@ -1,4 +1,6 @@
 import type { Meeting } from "@/types/meeting";
+import { jsPDF } from "jspdf";
+import { supabase } from "@/integrations/supabase/client";
 
 export function buildReportText(m: Meeting): string {
   return [
@@ -19,6 +21,116 @@ export function downloadText(m: Meeting) {
   const a = document.createElement("a");
   a.href = url; a.download = `${safe(m.title)}.txt`; a.click();
   URL.revokeObjectURL(url);
+}
+
+export function downloadPdf(m: Meeting) {
+  const pdf = new jsPDF({ unit: "pt", format: "a4" });
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const margin = 48;
+  const maxW = pageW - margin * 2;
+  let y = margin;
+
+  const ensure = (need: number) => {
+    if (y + need > pageH - margin) { pdf.addPage(); y = margin; }
+  };
+  const writeBlock = (text: string, size = 11, bold = false, color: [number,number,number] = [30,30,40]) => {
+    pdf.setFont("helvetica", bold ? "bold" : "normal");
+    pdf.setFontSize(size);
+    pdf.setTextColor(...color);
+    const lines = pdf.splitTextToSize(text || "—", maxW);
+    for (const line of lines) {
+      ensure(size + 4);
+      pdf.text(line, margin, y);
+      y += size + 4;
+    }
+  };
+  const heading = (label: string) => {
+    y += 10; ensure(28);
+    pdf.setFillColor(139, 92, 246);
+    pdf.rect(margin, y - 8, 3, 14, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+    pdf.setTextColor(20, 20, 30);
+    pdf.text(label.toUpperCase(), margin + 10, y + 4);
+    y += 18;
+  };
+
+  // Title
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(22);
+  pdf.setTextColor(15, 15, 25);
+  const title = pdf.splitTextToSize(m.title, maxW);
+  pdf.text(title, margin, y + 16);
+  y += 16 + title.length * 22;
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
+  pdf.setTextColor(120, 120, 130);
+  pdf.text(`Generated ${new Date().toLocaleString()}`, margin, y);
+  y += 16;
+
+  heading("Summary");
+  writeBlock(m.summary ?? "—");
+
+  heading("Decisions");
+  for (const d of m.decisions ?? []) writeBlock(`• ${d}`);
+  if (!(m.decisions ?? []).length) writeBlock("—");
+
+  heading("Action Items");
+  for (const a of m.action_items ?? []) {
+    writeBlock(a.title, 11, true);
+    writeBlock(`${a.owner} · due ${a.due} · ${a.status}`, 10, false, [110,110,120]);
+  }
+  if (!(m.action_items ?? []).length) writeBlock("—");
+
+  heading("Scope of Work");
+  writeBlock(m.scope_of_work ?? "—");
+
+  heading("Timeline");
+  for (const t of m.timeline ?? []) writeBlock(`${t.date}  —  ${t.milestone}`);
+  if (!(m.timeline ?? []).length) writeBlock("—");
+
+  heading("Transcript");
+  for (const seg of m.transcript ?? []) {
+    writeBlock(`[${seg.timestamp}] ${seg.speaker}`, 10, true, [90,90,100]);
+    writeBlock(seg.text, 11);
+    y += 4;
+  }
+
+  pdf.save(`${safe(m.title)}.pdf`);
+}
+
+export async function sendEmailViaResend(m: Meeting, to: string) {
+  const html = buildReportHtml(m);
+  const { data, error } = await supabase.functions.invoke("send-email", {
+    body: {
+      to,
+      subject: `Meeting notes: ${m.title}`,
+      html,
+    },
+  });
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+function buildReportHtml(m: Meeting): string {
+  const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]!));
+  const list = (xs: string[]) => xs.length ? `<ul>${xs.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "<p>—</p>";
+  return `
+    <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:640px;margin:auto;color:#111">
+      <h1 style="font-size:22px;border-left:3px solid #8B5CF6;padding-left:10px">${esc(m.title)}</h1>
+      <h2 style="font-size:14px;color:#555;text-transform:uppercase">Summary</h2>
+      <p>${esc(m.summary ?? "—")}</p>
+      <h2 style="font-size:14px;color:#555;text-transform:uppercase">Decisions</h2>
+      ${list((m.decisions ?? []).map(String))}
+      <h2 style="font-size:14px;color:#555;text-transform:uppercase">Action Items</h2>
+      ${list((m.action_items ?? []).map(a => `${a.title} — ${a.owner} (due ${a.due}) [${a.status}]`))}
+      <h2 style="font-size:14px;color:#555;text-transform:uppercase">Scope of Work</h2>
+      <p>${esc(m.scope_of_work ?? "—")}</p>
+      <h2 style="font-size:14px;color:#555;text-transform:uppercase">Timeline</h2>
+      ${list((m.timeline ?? []).map(t => `${t.date} — ${t.milestone}`))}
+    </div>`;
 }
 
 export async function downloadPpt(m: Meeting) {
