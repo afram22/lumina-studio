@@ -4,18 +4,6 @@ import { BlurText } from "@/components/BlurText";
 import { HlsVideo } from "@/components/HlsVideo";
 import { useAuth } from "@/hooks/useAuth";
 
-  component: LandingPage,
-  head: () => ({
-    meta: [
-      { title: "Studio — AI-Powered Web Design Agency" },
-      {
-        name: "description",
-        content:
-          "Stunning design. Blazing performance. Built by AI, refined by experts. The website your brand deserves.",
-      },
-    ],
-  }),
-});
 
 const HERO_VIDEO =
   "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260307_083826_e938b29f-a43a-41ec-a153-3d4730578ab8.mp4";
@@ -33,7 +21,7 @@ function Navbar() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate({ to: "/" });
+    navigate("/");
   };
 
   return (

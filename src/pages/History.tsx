@@ -12,11 +12,6 @@ import {
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
-  component: HistoryPage,
-  head: () => ({
-    meta: [{ title: "History — Chronos Agent" }],
-  }),
-});
 
 const SAMPLE_MEETINGS = [
   {
@@ -73,7 +68,7 @@ function HistoryPage() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate({ to: "/" });
+    navigate("/");
   };
 
   const filtered = SAMPLE_MEETINGS.filter((m) =>
@@ -174,9 +169,9 @@ function NavBar({
   active: "Dashboard" | "History" | "Settings";
 }) {
   const links = [
-    { label: "Dashboard", to: "/dashboard" as const },
-    { label: "History", to: "/history" as const },
-    { label: "Settings", to: "/settings" as const },
+    { label: "Dashboard", to: "/dashboard" },
+    { label: "History", to: "/history" },
+    { label: "Settings", to: "/settings" },
   ];
   return (
     <nav className="px-6 lg:px-10 py-4 flex items-center justify-between">

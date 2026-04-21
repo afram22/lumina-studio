@@ -5,9 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthShell } from "./login";
 
-  component: SignupPage,
-  head: () => ({ meta: [{ title: "Create account — Chronos Agent" }] }),
-});
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -19,7 +16,7 @@ function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) navigate({ to: "/dashboard" });
+    if (user) navigate("/dashboard");
   }, [user, navigate]);
 
   const onSubmit = async (e: FormEvent) => {
@@ -41,7 +38,7 @@ function SignupPage() {
       return;
     }
     if (data.session) {
-      navigate({ to: "/dashboard" });
+      navigate("/dashboard");
     } else {
       setInfo("Check your email to confirm your account, then sign in.");
     }

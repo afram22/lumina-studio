@@ -14,11 +14,6 @@ import {
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
-  component: SettingsPage,
-  head: () => ({
-    meta: [{ title: "Settings — Chronos Agent" }],
-  }),
-});
 
 function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -30,7 +25,7 @@ function SettingsPage() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate({ to: "/" });
+    navigate("/");
   };
 
   const handleSave = () => {
@@ -119,7 +114,7 @@ function SettingsPage() {
         {/* Appearance */}
         <Section icon={Palette} title="Appearance">
           <div className="flex gap-2 relative z-[1]">
-            {(["dark", "system"] as const).map((t) => (
+            {(["dark", "system"]).map((t) => (
               <button
                 key={t}
                 onClick={() => setTheme(t)}
@@ -230,9 +225,9 @@ function NavBar({
   active: "Dashboard" | "History" | "Settings";
 }) {
   const links = [
-    { label: "Dashboard", to: "/dashboard" as const },
-    { label: "History", to: "/history" as const },
-    { label: "Settings", to: "/settings" as const },
+    { label: "Dashboard", to: "/dashboard" },
+    { label: "History", to: "/history" },
+    { label: "Settings", to: "/settings" },
   ];
   return (
     <nav className="px-6 lg:px-10 py-4 flex items-center justify-between">

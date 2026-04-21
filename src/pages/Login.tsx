@@ -4,9 +4,6 @@ import { ArrowUpRight, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-  component: LoginPage,
-  head: () => ({ meta: [{ title: "Sign in — Chronos Agent" }] }),
-});
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -17,7 +14,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) navigate({ to: "/dashboard" });
+    if (user) navigate("/dashboard");
   }, [user, navigate]);
 
   const onSubmit = async (e: FormEvent) => {
@@ -30,7 +27,7 @@ function LoginPage() {
       setError(error.message);
       return;
     }
-    navigate({ to: "/dashboard" });
+    navigate("/dashboard");
   };
 
   return (
