@@ -11,6 +11,13 @@ import {
   Shield,
   Palette,
   Check,
+  Key,
+  Copy,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +30,20 @@ function SettingsPage() {
   const [autoExec, setAutoExec] = useState(false);
   const [theme, setTheme] = useState<"dark" | "system">("dark");
   const [saved, setSaved] = useState(false);
+  const [apiKeys, setApiKeys] = useState<{ id: string; name: string; key: string; created: string; revealed: boolean }[]>([
+    { id: "k_live_1", name: "Production", key: "ck_live_8f3a91b2c7d4e5f6a1b2c3d4e5f6a7b8", created: "Apr 12, 2026", revealed: false },
+    { id: "k_test_1", name: "Development", key: "ck_test_2d4f6a8b9c1e3f5a7b9d1f3a5c7e9b1d", created: "Mar 28, 2026", revealed: false },
+  ]);
+  const [webhookUrl, setWebhookUrl] = useState("https://api.yourapp.com/webhooks/chronos");
+
+  const newKey = () => {
+    const rand = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((b) => b.toString(16).padStart(2, "0")).join("");
+    setApiKeys((k) => [...k, { id: crypto.randomUUID(), name: `Key ${k.length + 1}`, key: `ck_live_${rand}`, created: new Date().toLocaleDateString(), revealed: true }]);
+  };
+  const revoke = (id: string) => setApiKeys((k) => k.filter((x) => x.id !== id));
+  const reveal = (id: string) => setApiKeys((k) => k.map((x) => (x.id === id ? { ...x, revealed: !x.revealed } : x)));
+  const copy = (val: string) => { navigator.clipboard.writeText(val); };
+  const mask = (key: string) => key.slice(0, 8) + "•".repeat(20) + key.slice(-4);
 
   const handleSignOut = async () => {
     await signOut();
