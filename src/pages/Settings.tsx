@@ -134,7 +134,77 @@ function SettingsPage() {
           </div>
         </Section>
 
+        {/* API Keys */}
+        <Section icon={Key} title="API">
+          <div className="relative z-[1]">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-white/50 font-body">
+                Use these keys to authenticate requests to the Chronos API.
+              </p>
+              <button
+                onClick={newKey}
+                className="text-xs font-body px-3 py-1.5 rounded-full bg-white text-black inline-flex items-center gap-1.5 hover:bg-white/90"
+              >
+                <Plus className="h-3 w-3" /> New key
+              </button>
+            </div>
+            <div className="space-y-2">
+              {apiKeys.map((k) => (
+                <div key={k.id} className="liquid-glass rounded-xl p-4">
+                  <div className="relative z-[1] flex items-center justify-between gap-3 mb-2">
+                    <div>
+                      <p className="text-sm text-white font-body">{k.name}</p>
+                      <p className="text-[11px] text-white/40 font-body">Created {k.created}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => reveal(k.id)} className="p-1.5 text-white/60 hover:text-white" title={k.revealed ? "Hide" : "Reveal"}>
+                        {k.revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </button>
+                      <button onClick={() => { copy(k.key); toast.success("Key copied"); }} className="p-1.5 text-white/60 hover:text-white" title="Copy">
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => { revoke(k.id); toast.success("Key revoked"); }} className="p-1.5 text-white/60 hover:text-red-400" title="Revoke">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <code className="relative z-[1] block text-xs font-mono text-white/80 bg-black/30 rounded-lg px-3 py-2 break-all">
+                    {k.revealed ? k.key : mask(k.key)}
+                  </code>
+                </div>
+              ))}
+              {apiKeys.length === 0 && (
+                <div className="liquid-glass rounded-xl p-6 text-center">
+                  <p className="text-sm text-white/50 font-body relative z-[1]">No API keys yet.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6">
+              <p className="text-xs uppercase tracking-wider text-white/50 mb-2 font-body">Webhook URL</p>
+              <div className="liquid-glass rounded-xl flex items-center gap-2 px-3 py-2">
+                <input
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  className="flex-1 bg-transparent text-sm text-white font-mono outline-none relative z-[1]"
+                  placeholder="https://"
+                />
+                <button onClick={() => { copy(webhookUrl); toast.success("URL copied"); }} className="p-1.5 text-white/60 hover:text-white relative z-[1]">
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={() => toast.success("Webhook tested")} className="p-1.5 text-white/60 hover:text-white relative z-[1]">
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <p className="mt-2 text-[11px] text-white/40 font-body">
+                Chronos will POST meeting events to this URL. Used for custom integrations.
+              </p>
+            </div>
+          </div>
+        </Section>
+
         {/* Appearance */}
+        <Section icon={Palette} title="Appearance">
         <Section icon={Palette} title="Appearance">
           <div className="flex gap-2 relative z-[1]">
             {(["dark", "system"] as const).map((t) => (
