@@ -3,31 +3,16 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload, Sparkles, FileText, ListChecks, Activity, ScrollText,
-  Mail, StickyNote, MessageSquare, Download, LogOut,
+  Mail, Presentation, MessageSquare, Download, LogOut,
   User as UserIcon, Loader2, CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { Meeting } from "@/types/meeting";
+import { downloadPpt, downloadText, emailMailto, postToSlack } from "@/lib/exports";
 
 type TabKey = "transcript" | "tasks" | "scope" | "agent";
-
-type ActionItem = { title: string; owner: string; due: string; status: "confirmed" | "suggestion" };
-type Segment = { timestamp: string; speaker: string; text: string };
-type Milestone = { date: string; milestone: string };
-type Meeting = {
-  id: string;
-  title: string;
-  status: string;
-  error: string | null;
-  summary: string | null;
-  transcript: Segment[] | null;
-  decisions: string[] | null;
-  action_items: ActionItem[] | null;
-  timeline: Milestone[] | null;
-  scope_of_work: string | null;
-  agent_log: string[] | null;
-};
 
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -132,23 +117,24 @@ export default function Dashboard() {
     return true;
   };
 
-  const downloadPdf = () => {
+  const handleDownload = () => { if (requireResult() && meeting) downloadText(meeting); };
+  const handlePpt = async () => {
     if (!requireResult() || !meeting) return;
-    const lines = [
-      meeting.title, "",
-      "SUMMARY", meeting.summary ?? "", "",
-      "DECISIONS", ...(meeting.decisions ?? []).map(d => `• ${d}`), "",
-      "ACTION ITEMS",
-      ...(meeting.action_items ?? []).map(a => `• ${a.title} — ${a.owner} (due ${a.due}) [${a.status}]`), "",
-      "SCOPE OF WORK", meeting.scope_of_work ?? "", "",
-      "TIMELINE",
-      ...(meeting.timeline ?? []).map(t => `${t.date} — ${t.milestone}`),
-    ];
-    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `${meeting.title}.txt`; a.click();
-    URL.revokeObjectURL(url);
+    try { await downloadPpt(meeting); toast.success("PPT generated"); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Failed to generate PPT"); }
+  };
+  const handleEmail = () => {
+    if (!requireResult() || !meeting) return;
+    const to = localStorage.getItem("chronos.integration.emailTo") ?? "";
+    if (!to) { toast.error("Set a default email recipient in Settings"); return; }
+    window.location.href = emailMailto(meeting, to);
+  };
+  const handleSlack = async () => {
+    if (!requireResult() || !meeting) return;
+    const url = localStorage.getItem("chronos.integration.slackWebhook") ?? "";
+    if (!url) { toast.error("Add your Slack webhook URL in Settings"); return; }
+    try { await postToSlack(meeting, url); toast.success("Posted to Slack"); }
+    catch { toast.error("Could not post to Slack"); }
   };
 
   return (
@@ -198,13 +184,14 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div className="mt-8 grid grid-cols-3 gap-2 relative z-[1]">
+          <div className="mt-8 grid grid-cols-4 gap-2 relative z-[1]">
             {[
-              { Icon: Mail, label: "Send Email" },
-              { Icon: StickyNote, label: "Create Notion" },
-              { Icon: MessageSquare, label: "Post to Slack" },
-            ].map(({ Icon, label }) => (
-              <button key={label} onClick={() => requireResult() && toast.success(`${label} (demo)`)} disabled={!hasResult}
+              { Icon: Mail, label: "Email", onClick: handleEmail },
+              { Icon: Presentation, label: "PPT", onClick: handlePpt },
+              { Icon: MessageSquare, label: "Slack", onClick: handleSlack },
+              { Icon: Download, label: "Download", onClick: handleDownload },
+            ].map(({ Icon, label, onClick }) => (
+              <button key={label} onClick={onClick} disabled={!hasResult}
                 className="liquid-glass rounded-xl p-3 flex flex-col items-center gap-1.5 hover:bg-white/[0.04] transition disabled:opacity-40">
                 <Icon className="h-4 w-4 text-white/80 relative z-[1]" />
                 <span className="text-[10px] text-white/60 font-body relative z-[1]">{label}</span>
@@ -217,9 +204,9 @@ export default function Dashboard() {
           className="liquid-glass rounded-3xl p-6 md:p-8 min-h-[600px] flex flex-col">
           <div className="flex items-center justify-between mb-5 relative z-[1]">
             <h2 className="text-2xl font-heading italic text-white">{hasResult && meeting ? meeting.title : "Your meeting insights"}</h2>
-            <button onClick={downloadPdf} disabled={!hasResult}
+            <button onClick={handleDownload} disabled={!hasResult}
               className="liquid-glass rounded-full px-3 py-1.5 inline-flex items-center gap-1.5 text-xs text-white disabled:opacity-40">
-              <span className="relative z-10 inline-flex items-center gap-1.5"><Download className="h-3 w-3" /> Export</span>
+              <span className="relative z-10 inline-flex items-center gap-1.5"><Download className="h-3 w-3" /> Download</span>
             </button>
           </div>
 
