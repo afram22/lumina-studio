@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload, Sparkles, FileText, ListChecks, Activity, ScrollText,
   Mail, Presentation, MessageSquare, Download, LogOut,
-  User as UserIcon, Loader2, CheckCircle2,
+  User as UserIcon, Loader2, CheckCircle2, Home,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -353,6 +353,9 @@ function NavBar({ email, onSignOut, active }: { email?: string; onSignOut: () =>
         ))}
       </div>
       <div className="flex items-center gap-3">
+        <Link to="/" className="liquid-glass rounded-full px-4 py-2 text-sm text-white inline-flex items-center gap-2">
+          <span className="relative z-10 inline-flex items-center gap-2"><Home className="h-3.5 w-3.5" /> Back to site</span>
+        </Link>
         <div className="hidden sm:flex liquid-glass rounded-full px-3 py-1.5 items-center gap-2">
           <UserIcon className="h-3.5 w-3.5 text-white/70 relative z-10" />
           <span className="text-xs text-white/80 font-body relative z-10">{email}</span>
