@@ -10,69 +10,43 @@ import {
   ArrowUpRight,
   Search,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
-
-const SAMPLE_MEETINGS = [
-  {
-    id: "1",
-    title: "Q1 Product Roadmap Sync",
-    date: "Apr 18, 2026",
-    duration: "42 min",
-    participants: 6,
-    tasks: 12,
-    tag: "Product",
-  },
-  {
-    id: "2",
-    title: "Design System Review",
-    date: "Apr 15, 2026",
-    duration: "28 min",
-    participants: 4,
-    tasks: 7,
-    tag: "Design",
-  },
-  {
-    id: "3",
-    title: "Engineering Standup — Week 16",
-    date: "Apr 12, 2026",
-    duration: "18 min",
-    participants: 8,
-    tasks: 5,
-    tag: "Engineering",
-  },
-  {
-    id: "4",
-    title: "Investor Update Call",
-    date: "Apr 09, 2026",
-    duration: "55 min",
-    participants: 3,
-    tasks: 9,
-    tag: "Business",
-  },
-  {
-    id: "5",
-    title: "Customer Discovery — Acme Corp",
-    date: "Apr 05, 2026",
-    duration: "37 min",
-    participants: 5,
-    tasks: 11,
-    tag: "Sales",
-  },
-];
+type Row = {
+  id: string;
+  title: string;
+  status: string;
+  created_at: string;
+  action_items: { title: string }[] | null;
+};
 
 function HistoryPage() {
-  const { user, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [rows, setRows] = useState<Row[]>([]);
+
+  useEffect(() => {
+    if (!loading && !user) navigate("/login");
+  }, [loading, user, navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("meetings")
+      .select("id,title,status,created_at,action_items")
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setRows((data as Row[]) ?? []));
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
 
-  const filtered = SAMPLE_MEETINGS.filter((m) =>
+  const filtered = rows.filter((m) =>
     m.title.toLowerCase().includes(query.toLowerCase()),
   );
 
@@ -136,18 +110,17 @@ function HistoryPage() {
                       {m.title}
                     </h3>
                     <span className="text-[10px] uppercase tracking-wider text-white/60 px-2 py-0.5 rounded-full border border-white/15">
-                      {m.tag}
+                      {m.status}
                     </span>
                   </div>
                   <div className="mt-2 flex items-center gap-4 text-xs text-white/50 font-body flex-wrap">
                     <span className="inline-flex items-center gap-1.5">
-                      <Calendar className="h-3 w-3" /> {m.date}
+                      <Calendar className="h-3 w-3" /> {new Date(m.created_at).toLocaleDateString()}
                     </span>
                     <span className="inline-flex items-center gap-1.5">
-                      <Clock className="h-3 w-3" /> {m.duration}
+                      <Clock className="h-3 w-3" /> {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
-                    <span>{m.participants} participants</span>
-                    <span>{m.tasks} tasks extracted</span>
+                    <span>{m.action_items?.length ?? 0} tasks extracted</span>
                   </div>
                 </div>
                 <ArrowUpRight className="h-4 w-4 text-white/40 group-hover:text-white transition shrink-0" />

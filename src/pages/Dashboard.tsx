@@ -216,10 +216,10 @@ export default function Dashboard() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="liquid-glass rounded-3xl p-6 md:p-8 min-h-[600px] flex flex-col">
           <div className="flex items-center justify-between mb-5 relative z-[1]">
-            <h2 className="text-2xl font-heading italic text-white">{hasResult ? SAMPLE.title : "Your meeting insights"}</h2>
-            <button onClick={() => requireResult() && toast.success("PDF downloaded (demo)")} disabled={!hasResult}
+            <h2 className="text-2xl font-heading italic text-white">{hasResult && meeting ? meeting.title : "Your meeting insights"}</h2>
+            <button onClick={downloadPdf} disabled={!hasResult}
               className="liquid-glass rounded-full px-3 py-1.5 inline-flex items-center gap-1.5 text-xs text-white disabled:opacity-40">
-              <span className="relative z-10 inline-flex items-center gap-1.5"><Download className="h-3 w-3" /> PDF</span>
+              <span className="relative z-10 inline-flex items-center gap-1.5"><Download className="h-3 w-3" /> Export</span>
             </button>
           </div>
 
@@ -244,15 +244,15 @@ export default function Dashboard() {
               className="flex-1 relative z-[1]">
               {tab === "agent" && (
                 <div className="space-y-2 font-mono text-xs text-white/80">
-                  {agentLog.length === 0 ? (
+                  {!meeting?.agent_log || meeting.agent_log.length === 0 ? (
                     <p className="text-white/40 font-body italic">Logs from the agent will stream here.</p>
-                  ) : agentLog.map((l, i) => <div key={i} className="liquid-glass rounded-lg px-3 py-2"><span className="relative z-10">{l}</span></div>)}
+                  ) : meeting.agent_log.map((l, i) => <div key={i} className="liquid-glass rounded-lg px-3 py-2"><span className="relative z-10">{l}</span></div>)}
                 </div>
               )}
               {tab === "transcript" && (
-                hasResult ? (
+                hasResult && meeting ? (
                   <div className="space-y-3">
-                    {SAMPLE.transcript.map((l, i) => (
+                    {(meeting.transcript ?? []).map((l, i) => (
                       <div key={i} className="flex gap-4">
                         <span className="text-xs text-white/40 font-mono shrink-0 w-12">{l.timestamp}</span>
                         <div>
@@ -263,15 +263,15 @@ export default function Dashboard() {
                     ))}
                     <div className="mt-6 pt-6 border-t border-white/5">
                       <h3 className="text-sm text-white/60 font-body uppercase tracking-wider mb-3">Summary</h3>
-                      <p className="text-sm text-white/85 font-body font-light">{SAMPLE.summary}</p>
+                      <p className="text-sm text-white/85 font-body font-light">{meeting.summary}</p>
                     </div>
                   </div>
                 ) : <EmptyState />
               )}
               {tab === "tasks" && (
-                hasResult ? (
+                hasResult && meeting ? (
                   <div className="space-y-2">
-                    {SAMPLE.action_items.map((a, i) => (
+                    {(meeting.action_items ?? []).map((a, i) => (
                       <div key={i} className="liquid-glass rounded-xl p-4 flex items-start gap-3">
                         <CheckCircle2 className={`h-4 w-4 mt-0.5 relative z-[1] ${a.status === "confirmed" ? "text-emerald-400" : "text-white/30"}`} />
                         <div className="flex-1 relative z-[1]">
@@ -281,19 +281,19 @@ export default function Dashboard() {
                       </div>
                     ))}
                     <h3 className="text-sm text-white/60 font-body uppercase tracking-wider mt-6 mb-3">Decisions</h3>
-                    {SAMPLE.decisions.map((d, i) => (
+                    {(meeting.decisions ?? []).map((d, i) => (
                       <div key={i} className="text-sm text-white/85 font-body font-light flex gap-2"><span>•</span>{d}</div>
                     ))}
                   </div>
                 ) : <EmptyState />
               )}
               {tab === "scope" && (
-                hasResult ? (
+                hasResult && meeting ? (
                   <div>
-                    <p className="text-sm text-white/85 font-body font-light leading-relaxed">{SAMPLE.scope_of_work}</p>
+                    <p className="text-sm text-white/85 font-body font-light leading-relaxed">{meeting.scope_of_work}</p>
                     <h3 className="text-sm text-white/60 font-body uppercase tracking-wider mt-6 mb-3">Timeline</h3>
                     <div className="space-y-2">
-                      {SAMPLE.timeline.map((t, i) => (
+                      {(meeting.timeline ?? []).map((t, i) => (
                         <div key={i} className="liquid-glass rounded-xl px-4 py-3 flex items-center gap-4">
                           <span className="text-xs font-mono text-white/60 relative z-[1] w-16 shrink-0">{t.date}</span>
                           <span className="text-sm text-white font-body relative z-[1]">{t.milestone}</span>
