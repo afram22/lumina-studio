@@ -6,7 +6,6 @@ import {
   User as UserIcon,
   Bell,
   Mail,
-  StickyNote,
   MessageSquare,
   Shield,
   Palette,
@@ -14,15 +13,14 @@ import {
   Key,
   Copy,
   RefreshCw,
-  Eye,
-  EyeOff,
-  Plus,
-  Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
+
+const LS_EMAIL = "chronos.integration.emailTo";
+const LS_SLACK = "chronos.integration.slackWebhook";
 
 function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -31,20 +29,34 @@ function SettingsPage() {
   const [autoExec, setAutoExec] = useState(false);
   const [theme, setTheme] = useState<"dark" | "system">("dark");
   const [saved, setSaved] = useState(false);
-  const [apiKeys, setApiKeys] = useState<{ id: string; name: string; key: string; created: string; revealed: boolean }[]>([
-    { id: "k_live_1", name: "Production", key: "ck_live_8f3a91b2c7d4e5f6a1b2c3d4e5f6a7b8", created: "Apr 12, 2026", revealed: false },
-    { id: "k_test_1", name: "Development", key: "ck_test_2d4f6a8b9c1e3f5a7b9d1f3a5c7e9b1d", created: "Mar 28, 2026", revealed: false },
-  ]);
-  const [webhookUrl, setWebhookUrl] = useState("https://api.yourapp.com/webhooks/chronos");
+  const [emailTo, setEmailTo] = useState("");
+  const [slackWebhook, setSlackWebhook] = useState("");
+  const [testingSlack, setTestingSlack] = useState(false);
 
-  const newKey = () => {
-    const rand = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((b) => b.toString(16).padStart(2, "0")).join("");
-    setApiKeys((k) => [...k, { id: crypto.randomUUID(), name: `Key ${k.length + 1}`, key: `ck_live_${rand}`, created: new Date().toLocaleDateString(), revealed: true }]);
-  };
-  const revoke = (id: string) => setApiKeys((k) => k.filter((x) => x.id !== id));
-  const reveal = (id: string) => setApiKeys((k) => k.map((x) => (x.id === id ? { ...x, revealed: !x.revealed } : x)));
+  useEffect(() => {
+    setEmailTo(localStorage.getItem(LS_EMAIL) ?? "");
+    setSlackWebhook(localStorage.getItem(LS_SLACK) ?? "");
+  }, []);
+
   const copy = (val: string) => { navigator.clipboard.writeText(val); };
-  const mask = (key: string) => key.slice(0, 8) + "•".repeat(20) + key.slice(-4);
+
+  const testSlack = async () => {
+    if (!slackWebhook) { toast.error("Add a Slack webhook URL first"); return; }
+    setTestingSlack(true);
+    try {
+      await fetch(slackWebhook, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "✅ Chronos Agent test message — your webhook works!" }),
+      });
+      toast.success("Test sent to Slack");
+    } catch {
+      toast.error("Could not send to Slack");
+    } finally {
+      setTestingSlack(false);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -52,6 +64,8 @@ function SettingsPage() {
   };
 
   const handleSave = () => {
+    localStorage.setItem(LS_EMAIL, emailTo);
+    localStorage.setItem(LS_SLACK, slackWebhook);
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
   };
@@ -104,100 +118,47 @@ function SettingsPage() {
           />
         </Section>
 
-        {/* Integrations */}
+        {/* Integrations — Email & Slack */}
         <Section icon={Shield} title="Integrations">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 relative z-[1]">
-            {[
-              { Icon: Mail, label: "Gmail", connected: true },
-              { Icon: StickyNote, label: "Notion", connected: false },
-              { Icon: MessageSquare, label: "Slack", connected: false },
-            ].map(({ Icon, label, connected }) => (
-              <div
-                key={label}
-                className="liquid-glass rounded-xl p-4 flex flex-col items-start gap-2"
-              >
-                <div className="flex items-center gap-2 relative z-[1]">
-                  <Icon className="h-4 w-4 text-white" />
-                  <span className="text-sm text-white font-body">{label}</span>
-                </div>
-                <button
-                  className={`text-xs font-body px-3 py-1 rounded-full mt-1 relative z-[1] ${
-                    connected
-                      ? "bg-white/10 text-white/80"
-                      : "bg-white text-black hover:bg-white/90"
-                  }`}
-                >
-                  {connected ? "Connected" : "Connect"}
-                </button>
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        {/* API Keys */}
-        <Section icon={Key} title="API">
-          <div className="relative z-[1]">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-white/50 font-body">
-                Use these keys to authenticate requests to the Chronos API.
-              </p>
-              <button
-                onClick={newKey}
-                className="text-xs font-body px-3 py-1.5 rounded-full bg-white text-black inline-flex items-center gap-1.5 hover:bg-white/90"
-              >
-                <Plus className="h-3 w-3" /> New key
-              </button>
-            </div>
-            <div className="space-y-2">
-              {apiKeys.map((k) => (
-                <div key={k.id} className="liquid-glass rounded-xl p-4">
-                  <div className="relative z-[1] flex items-center justify-between gap-3 mb-2">
-                    <div>
-                      <p className="text-sm text-white font-body">{k.name}</p>
-                      <p className="text-[11px] text-white/40 font-body">Created {k.created}</p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => reveal(k.id)} className="p-1.5 text-white/60 hover:text-white" title={k.revealed ? "Hide" : "Reveal"}>
-                        {k.revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                      </button>
-                      <button onClick={() => { copy(k.key); toast.success("Key copied"); }} className="p-1.5 text-white/60 hover:text-white" title="Copy">
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={() => { revoke(k.id); toast.success("Key revoked"); }} className="p-1.5 text-white/60 hover:text-red-400" title="Revoke">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <code className="relative z-[1] block text-xs font-mono text-white/80 bg-black/30 rounded-lg px-3 py-2 break-all">
-                    {k.revealed ? k.key : mask(k.key)}
-                  </code>
-                </div>
-              ))}
-              {apiKeys.length === 0 && (
-                <div className="liquid-glass rounded-xl p-6 text-center">
-                  <p className="text-sm text-white/50 font-body relative z-[1]">No API keys yet.</p>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6">
-              <p className="text-xs uppercase tracking-wider text-white/50 mb-2 font-body">Webhook URL</p>
+          <div className="relative z-[1] space-y-5">
+            <div>
+              <label className="flex items-center gap-2 text-xs uppercase tracking-wider text-white/60 mb-2 font-body">
+                <Mail className="h-3.5 w-3.5" /> Default email recipient
+              </label>
               <div className="liquid-glass rounded-xl flex items-center gap-2 px-3 py-2">
                 <input
-                  value={webhookUrl}
-                  onChange={(e) => setWebhookUrl(e.target.value)}
-                  className="flex-1 bg-transparent text-sm text-white font-mono outline-none relative z-[1]"
-                  placeholder="https://"
+                  type="email"
+                  value={emailTo}
+                  onChange={(e) => setEmailTo(e.target.value)}
+                  placeholder="team@company.com"
+                  className="flex-1 bg-transparent text-sm text-white font-body outline-none relative z-[1]"
                 />
-                <button onClick={() => { copy(webhookUrl); toast.success("URL copied"); }} className="p-1.5 text-white/60 hover:text-white relative z-[1]">
+              </div>
+              <p className="mt-1.5 text-[11px] text-white/40 font-body">
+                Used by the “Send Email” action on the Dashboard. Opens your mail client with the report pre-filled.
+              </p>
+            </div>
+
+            <div>
+              <label className="flex items-center gap-2 text-xs uppercase tracking-wider text-white/60 mb-2 font-body">
+                <MessageSquare className="h-3.5 w-3.5" /> Slack incoming webhook URL
+              </label>
+              <div className="liquid-glass rounded-xl flex items-center gap-2 px-3 py-2">
+                <input
+                  value={slackWebhook}
+                  onChange={(e) => setSlackWebhook(e.target.value)}
+                  placeholder="https://hooks.slack.com/services/…"
+                  className="flex-1 bg-transparent text-sm text-white font-mono outline-none relative z-[1]"
+                />
+                <button onClick={() => { copy(slackWebhook); toast.success("URL copied"); }} className="p-1.5 text-white/60 hover:text-white relative z-[1]" title="Copy">
                   <Copy className="h-3.5 w-3.5" />
                 </button>
-                <button onClick={() => toast.success("Webhook tested")} className="p-1.5 text-white/60 hover:text-white relative z-[1]">
-                  <RefreshCw className="h-3.5 w-3.5" />
+                <button onClick={testSlack} disabled={testingSlack} className="p-1.5 text-white/60 hover:text-white relative z-[1] disabled:opacity-40" title="Send test">
+                  <RefreshCw className={`h-3.5 w-3.5 ${testingSlack ? "animate-spin" : ""}`} />
                 </button>
               </div>
-              <p className="mt-2 text-[11px] text-white/40 font-body">
-                Chronos will POST meeting events to this URL. Used for custom integrations.
+              <p className="mt-1.5 text-[11px] text-white/40 font-body">
+                Create one at <span className="text-white/70">api.slack.com/messaging/webhooks</span>, then paste the URL here.
               </p>
             </div>
           </div>
