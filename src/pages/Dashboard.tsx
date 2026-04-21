@@ -8,93 +8,147 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 type TabKey = "transcript" | "tasks" | "scope" | "agent";
 
-const SAMPLE = {
-  title: "Q1 Product Roadmap Sync",
-  summary:
-    "The team aligned on three priority initiatives for Q1: shipping the new onboarding flow, sunsetting the legacy billing UI, and launching the partner integrations beta. Engineering raised concerns about capacity and proposed pulling in two contractors. Marketing committed to a launch campaign for late February.",
-  transcript: [
-    { timestamp: "00:00", speaker: "Sarah", text: "Thanks everyone for joining. Let's start with the Q1 roadmap." },
-    { timestamp: "00:18", speaker: "Marcus", text: "I've put together a draft prioritisation. Onboarding is the clear top." },
-    { timestamp: "01:02", speaker: "Elena", text: "Agreed. We're losing too many users at activation." },
-    { timestamp: "02:14", speaker: "Sarah", text: "Engineering — can we hit a Feb 28 ship date?" },
-    { timestamp: "02:30", speaker: "David", text: "Tight. We'd need two contractors and to descope the analytics rewrite." },
-  ],
-  decisions: [
-    "Ship new onboarding flow by Feb 28",
-    "Sunset legacy billing UI in Q2",
-    "Hire 2 contractors for engineering capacity",
-  ],
-  action_items: [
-    { title: "Draft contractor JD", owner: "Sarah", due: "Jan 24", status: "confirmed" },
-    { title: "Build onboarding wireframes", owner: "Elena", due: "Jan 31", status: "confirmed" },
-    { title: "Plan launch campaign", owner: "Marcus", due: "Feb 14", status: "confirmed" },
-    { title: "Define billing sunset comms", owner: "Sarah", due: "Feb 21", status: "suggestion" },
-  ],
-  timeline: [
-    { date: "Jan 24", milestone: "Contractor JD live" },
-    { date: "Jan 31", milestone: "Onboarding wireframes done" },
-    { date: "Feb 14", milestone: "Campaign brief approved" },
-    { date: "Feb 28", milestone: "Onboarding ship date" },
-  ],
-  scope_of_work:
-    "Scope: Redesign and ship the user onboarding flow targeting a 25% lift in 7-day activation. Includes new welcome screen, progressive profile build, contextual product tour, and instrumentation. Out of scope: billing changes, mobile parity (tracked separately).",
+type ActionItem = { title: string; owner: string; due: string; status: "confirmed" | "suggestion" };
+type Segment = { timestamp: string; speaker: string; text: string };
+type Milestone = { date: string; milestone: string };
+type Meeting = {
+  id: string;
+  title: string;
+  status: string;
+  error: string | null;
+  summary: string | null;
+  transcript: Segment[] | null;
+  decisions: string[] | null;
+  action_items: ActionItem[] | null;
+  timeline: Milestone[] | null;
+  scope_of_work: string | null;
+  agent_log: string[] | null;
 };
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<TabKey>("transcript");
-  const [hasResult, setHasResult] = useState(false);
+  const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [agentLog, setAgentLog] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSignOut = async () => { await signOut(); navigate("/"); };
-  const log = (msg: string) => setAgentLog((l) => [...l, msg]);
+  useEffect(() => {
+    if (!authLoading && !user) navigate("/login");
+  }, [authLoading, user, navigate]);
 
-  const simulate = (file: File) => {
-    setHasResult(false);
-    setAgentLog([]);
+  // Realtime subscription on the active meeting
+  useEffect(() => {
+    if (!meeting?.id) return;
+    const channel = supabase
+      .channel(`meeting-${meeting.id}`)
+      .on("postgres_changes", {
+        event: "UPDATE", schema: "public", table: "meetings",
+        filter: `id=eq.${meeting.id}`,
+      }, (payload) => {
+        setMeeting((prev) => prev ? { ...prev, ...(payload.new as Meeting) } : prev);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [meeting?.id]);
+
+  const processing = meeting?.status === "transcribing" || meeting?.status === "extracting";
+  const hasResult = meeting?.status === "done";
+
+  const handleSignOut = async () => { await signOut(); navigate("/"); };
+
+  const onFile = async (file?: File | null) => {
+    if (!file || !user) return;
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("File must be 20MB or smaller");
+      return;
+    }
     setUploading(true);
     setProgress(0);
     setTab("agent");
-    log(`📤 Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)…`);
-    const t = window.setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) { window.clearInterval(t); return 100; }
-        return Math.min(p + 12, 100);
-      });
-    }, 200);
-    window.setTimeout(() => {
-      window.clearInterval(t);
+
+    try {
+      // 1. Create meeting row
+      const { data: created, error: cErr } = await supabase
+        .from("meetings")
+        .insert({
+          user_id: user.id,
+          title: file.name.replace(/\.[^.]+$/, ""),
+          status: "uploading",
+          agent_log: [`${new Date().toISOString().slice(11,19)}  📤 Uploading ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)…`],
+        })
+        .select()
+        .single();
+      if (cErr || !created) throw new Error(cErr?.message ?? "Failed to create meeting");
+      setMeeting(created as unknown as Meeting);
+
+      // 2. Upload to storage with simulated progress
+      const path = `${user.id}/${created.id}/${file.name}`;
+      const interval = window.setInterval(() => {
+        setProgress((p) => Math.min(p + 8, 92));
+      }, 200);
+      const { error: upErr } = await supabase.storage
+        .from("meeting-uploads").upload(path, file, { upsert: true });
+      window.clearInterval(interval);
       setProgress(100);
+      if (upErr) throw new Error(upErr.message);
+
+      await supabase.from("meetings").update({
+        file_path: path,
+        agent_log: [
+          ...(created.agent_log as string[] ?? []),
+          `${new Date().toISOString().slice(11,19)}  ✅ Upload complete.`,
+        ],
+      }).eq("id", created.id);
+
+      // 3. Trigger processing
+      const { error: fnErr } = await supabase.functions.invoke("process-meeting", {
+        body: { meetingId: created.id },
+      });
+      if (fnErr) throw new Error(fnErr.message);
+
+      toast.success("Processing started — watch the Agent tab.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Upload failed";
+      toast.error(msg);
+    } finally {
       setUploading(false);
-      setProcessing(true);
-      log("✅ Upload complete.");
-      log("🎙️ Transcribing audio…");
-      window.setTimeout(() => {
-        log("🧠 Extracting tasks, decisions and scope…");
-        window.setTimeout(() => {
-          log("✅ Done — artifacts generated.");
-          setProcessing(false);
-          setHasResult(true);
-          setTab("transcript");
-          toast.success("Meeting processed successfully");
-        }, 1400);
-      }, 1400);
-    }, 1800);
+    }
   };
 
-  const onFile = (f?: File | null) => { if (f) simulate(f); };
+  // Switch to transcript tab automatically when result lands
+  useEffect(() => {
+    if (hasResult && tab === "agent") setTab("transcript");
+  }, [hasResult]); // eslint-disable-line
+
   const requireResult = () => {
     if (!hasResult) { toast.error("Process a meeting first"); return false; }
     return true;
+  };
+
+  const downloadPdf = () => {
+    if (!requireResult() || !meeting) return;
+    const lines = [
+      meeting.title, "",
+      "SUMMARY", meeting.summary ?? "", "",
+      "DECISIONS", ...(meeting.decisions ?? []).map(d => `• ${d}`), "",
+      "ACTION ITEMS",
+      ...(meeting.action_items ?? []).map(a => `• ${a.title} — ${a.owner} (due ${a.due}) [${a.status}]`), "",
+      "SCOPE OF WORK", meeting.scope_of_work ?? "", "",
+      "TIMELINE",
+      ...(meeting.timeline ?? []).map(t => `${t.date} — ${t.milestone}`),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${meeting.title}.txt`; a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
