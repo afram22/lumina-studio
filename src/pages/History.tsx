@@ -1,5 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import {
   Sparkles,
   LogOut,
@@ -13,7 +12,6 @@ import {
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
-export const Route = createFileRoute("/_authenticated/history")({
   component: HistoryPage,
   head: () => ({
     meta: [{ title: "History — Chronos Agent" }],

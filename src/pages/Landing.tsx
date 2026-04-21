@@ -1,11 +1,9 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { ArrowUpRight, Play, Zap, Palette, BarChart3, Shield, LogOut } from "lucide-react";
 import { BlurText } from "@/components/BlurText";
 import { HlsVideo } from "@/components/HlsVideo";
 import { useAuth } from "@/hooks/useAuth";
 
-export const Route = createFileRoute("/")({
   component: LandingPage,
   head: () => ({
     meta: [

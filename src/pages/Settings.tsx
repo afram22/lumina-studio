@@ -1,5 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import {
   Sparkles,
   LogOut,
@@ -15,7 +14,6 @@ import {
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
-export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
   head: () => ({
     meta: [{ title: "Settings — Chronos Agent" }],

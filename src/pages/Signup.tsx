@@ -1,12 +1,10 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthShell } from "./login";
 
-export const Route = createFileRoute("/signup")({
   component: SignupPage,
   head: () => ({ meta: [{ title: "Create account — Chronos Agent" }] }),
 });
