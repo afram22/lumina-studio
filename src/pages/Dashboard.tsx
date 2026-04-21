@@ -134,7 +134,6 @@ export default function Dashboard() {
     return true;
   };
 
-  const handleDownload = () => { if (requireResult() && meeting) downloadText(meeting); };
   const handlePdf = () => { if (requireResult() && meeting) downloadPdf(meeting); };
   const handlePpt = async () => {
     if (!requireResult() || !meeting) return;
@@ -228,9 +227,9 @@ export default function Dashboard() {
           className="liquid-glass rounded-3xl p-6 md:p-8 min-h-[600px] flex flex-col">
           <div className="flex items-center justify-between mb-5 relative z-[1]">
             <h2 className="text-2xl font-heading italic text-white">{hasResult && meeting ? meeting.title : "Your meeting insights"}</h2>
-            <button onClick={handleDownload} disabled={!hasResult}
+            <button onClick={handlePdf} disabled={!hasResult}
               className="liquid-glass rounded-full px-3 py-1.5 inline-flex items-center gap-1.5 text-xs text-white disabled:opacity-40">
-              <span className="relative z-10 inline-flex items-center gap-1.5"><Download className="h-3 w-3" /> Download</span>
+              <span className="relative z-10 inline-flex items-center gap-1.5"><Download className="h-3 w-3" /> PDF</span>
             </button>
           </div>
 
