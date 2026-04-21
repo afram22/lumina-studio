@@ -21,7 +21,8 @@ Deno.serve(async (req) => {
   const html = body.html ?? "";
   if (!to || !subject || !html) return json({ error: "to, subject, html are required" }, 400);
 
-  const from = body.from?.trim() || "Chronos Agent <onboarding@resend.dev>";
+  const FROM_DEFAULT = Deno.env.get("RESEND_FROM") || "Chronos Agent <onboarding@resend.dev>";
+  const from = body.from?.trim() || FROM_DEFAULT;
 
   try {
     const resp = await fetch(`${GATEWAY_URL}/emails`, {
