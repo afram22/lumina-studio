@@ -1,3 +1,4 @@
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowUpRight, Play, Zap, Palette, BarChart3, Shield, LogOut } from "lucide-react";
 import { BlurText } from "@/components/BlurText";
