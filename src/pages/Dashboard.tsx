@@ -28,6 +28,23 @@ export default function Dashboard() {
     if (!authLoading && !user) navigate("/login");
   }, [authLoading, user, navigate]);
 
+  // Load most recent meeting on mount so transcript is visible after reloads
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("meetings")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled && data) setMeeting(data as unknown as Meeting);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
   // Realtime subscription on the active meeting
   useEffect(() => {
     if (!meeting?.id) return;
