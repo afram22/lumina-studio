@@ -205,6 +205,7 @@ function SettingsPage() {
 
         {/* Appearance */}
         <Section icon={Palette} title="Appearance">
+          <div className="flex gap-2 relative z-[1]">
             {(["dark", "system"] as const).map((t) => (
               <button
                 key={t}
