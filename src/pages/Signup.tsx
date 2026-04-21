@@ -1,14 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowUpRight, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { AuthShell } from "./login";
-
+import { AuthShell } from "./Login";
 
 function SignupPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signUp } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -24,24 +23,13 @@ function SignupPage() {
     setError(null);
     setInfo(null);
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo:
-          typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined,
-      },
-    });
+    const { error } = await signUp(email, password);
     setLoading(false);
     if (error) {
-      setError(error.message);
+      setError(error);
       return;
     }
-    if (data.session) {
-      navigate("/dashboard");
-    } else {
-      setInfo("Check your email to confirm your account, then sign in.");
-    }
+    navigate("/dashboard");
   };
 
   return (
